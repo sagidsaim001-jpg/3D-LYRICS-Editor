@@ -304,7 +304,6 @@ private fun EditorScreen() {
                     }
                 }
                     Spacer(Modifier.height(8.dp))
-                }
             }
         }
     }
