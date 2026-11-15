@@ -120,68 +120,70 @@ private fun EditorScreen() {
         secondary = Violet, onBackground = Color.White, onSurface = Color.White
     )) {
         Scaffold(containerColor = Night) { padding ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            var activeTool by remember { mutableStateOf("TEXT") }
+            Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Row(Modifier.fillMaxWidth().height(42.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
-                        Text("SAJI STUDIO", color = Pink, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                        Text("3D LYRICS Editor", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("SAJI STUDIO", color = Pink, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text("3D LYRICS EDITOR", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
                     }
-                    Surface(color = Color(0xFF25152B), shape = RoundedCornerShape(50)) {
-                        Text("BETA 02", color = Pink, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Button(onClick = { picker.launch(arrayOf("video/*")) }, shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(5.dp))
+                        Text(if (videoUri == null) "IMPORT VIDEO" else "CHANGE VIDEO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(260.dp)
-                        .shadow(18.dp, RoundedCornerShape(22.dp))
-                        .background(Color(0xFF101321), RoundedCornerShape(22.dp))
-                        .border(1.dp, Color(0xFF343047), RoundedCornerShape(22.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxWidth().weight(1f).padding(top = 6.dp, bottom = 7.dp)
+                    .shadow(14.dp, RoundedCornerShape(16.dp))
+                    .background(Color(0xFF101321), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFF343047), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
                     if (player != null) {
-                        AndroidView(
-                            factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        AndroidView(factory = { ctx -> PlayerView(ctx).apply {
+                            this.player = player
+                            useController = true
+                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        } }, modifier = Modifier.fillMaxSize())
                     } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Movie, null, tint = Violet, modifier = Modifier.size(42.dp))
-                            Text("Your video preview", color = Color.White, fontWeight = FontWeight.SemiBold)
-                            Text("Import a clip to start creating", color = Color.LightGray, fontSize = 12.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Icon(Icons.Default.Movie, null, tint = Violet, modifier = Modifier.size(38.dp))
+                            Text("Video preview", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Import a video to start editing", color = Color.LightGray, fontSize = 11.sp)
                         }
                     }
-                    PerspectiveText(
-                        text = lyric.ifBlank { "YOUR LYRICS" },
-                        modifier = Modifier.fillMaxSize(),
-                        sizeSp = textSize,
-                        cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
-                        glow = glow,
-                        bold = bold,
-                        italic = italic,
-                        fontPath = selectedFontPath,
-                        rotationX = rotateX,
-                        rotationY = rotateY,
-                        translationX = positionX,
-                        translationY = positionY
-                    )
+                    PerspectiveText(text = lyric.ifBlank { "YOUR LYRICS" }, modifier = Modifier.fillMaxSize(),
+                        sizeSp = textSize, cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
+                        glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath,
+                        rotationX = rotateX, rotationY = rotateY, translationX = positionX, translationY = positionY)
                 }
-
-                Button(
-                    onClick = { picker.launch(arrayOf("video/*")) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)
-                ) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (videoUri == null) "IMPORT VIDEO" else "CHANGE VIDEO", fontWeight = FontWeight.ExtraBold)
+                Surface(color = Panel, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("TIMELINE", color = Pink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("${playhead.toInt()}%  •  ${keyframes.size} keyframes", color = Color.LightGray, fontSize = 10.sp)
+                        }
+                        Slider(value = playhead, onValueChange = { playhead = it }, valueRange = 0f..100f,
+                            modifier = Modifier.height(25.dp), colors = SliderDefaults.colors(thumbColor = Pink, activeTrackColor = Pink, inactiveTrackColor = Color(0xFF3B3A4C)))
+                    }
                 }
-
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth().background(Color(0xFF171927), RoundedCornerShape(13.dp)).padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("TEXT", "FONT", "3D", "KEYFRAMES").forEach { tool ->
+                        val active = activeTool == tool
+                        Surface(color = if (active) Color(0xFF452044) else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f).clickable { activeTool = tool }) {
+                            Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(when(tool) { "TEXT" -> "T"; "FONT" -> "Aa"; "3D" -> "◇"; else -> "◆" },
+                                    color = if (active) Pink else Color.LightGray, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(tool, color = if (active) Pink else Color.LightGray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                Column(Modifier.fillMaxWidth().weight(0.92f).padding(top = 6.dp).verticalScroll(rememberScrollState())) {
+                    when(activeTool) {
+                        "TEXT" -> {
                 Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -244,7 +246,33 @@ private fun EditorScreen() {
                         }
                     }
                 }
-
+                        }
+                        "FONT" -> {
+                            Surface(color = Panel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text("CUSTOM FONT LIBRARY", color = Pink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Button(onClick = { fontPicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream")) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) {
+                                        Text("+ IMPORT TTF / OTF FONT")
+                                    }
+                                    Text(fontMessage, color = Color.LightGray, fontSize = 11.sp)
+                                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Surface(color = if (selectedFontPath == null) Color(0xFF452044) else Color(0xFF25283A),
+                                            shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = null }) {
+                                            Text("DEFAULT", color = if (selectedFontPath == null) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
+                                        }
+                                        customFonts.forEach { path ->
+                                            val label = File(path).name.substringAfter('_').substringBeforeLast('.')
+                                            Surface(color = if (selectedFontPath == path) Color(0xFF452044) else Color(0xFF25283A),
+                                                shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = path }) {
+                                                Text(label, color = if (selectedFontPath == path) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        "3D" -> {
                 Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -271,7 +299,8 @@ private fun EditorScreen() {
                         SliderControl("Neon Glow", glow, 0f, 40f, "") { glow = it }
                     }
                 }
-
+                        }
+                        "KEYFRAMES" -> {
                 Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("KEYFRAME TIMELINE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -290,15 +319,10 @@ private fun EditorScreen() {
                         Text("Keyframes currently save timeline markers. Automatic motion interpolation is a later upgrade.", color = Color.LightGray, fontSize = 11.sp)
                     }
                 }
-
-                Surface(color = Color(0xFF21152A), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("BETA 03 • CORNER PERSPECTIVE & KEYFRAME MARKERS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Spacer(Modifier.height(5.dp))
-                        Text("Added editable corner pinning controls, multi-layer lyrics, styling and timeline keyframe markers. Keyframe interpolation, motion tracking and MP4 export are still pending.", color = Color(0xFFD6D1E3), fontSize = 12.sp, lineHeight = 18.sp)
+                        }
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.height(16.dp))
             }
         }
     }
