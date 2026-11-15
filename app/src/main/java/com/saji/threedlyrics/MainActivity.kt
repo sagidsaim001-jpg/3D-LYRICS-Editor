@@ -1,6 +1,9 @@
 package com.saji.threedlyrics
 
 import android.net.Uri
+import android.graphics.Typeface
+import android.graphics.Paint
+import java.io.File
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -58,6 +61,23 @@ class MainActivity : ComponentActivity() {
 private fun EditorScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var videoUri by remember { mutableStateOf<Uri?>(null) }
+    val customFonts = remember { mutableStateListOf<String>().apply {
+        val dir = File(context.filesDir, "custom_fonts").apply { mkdirs() }
+        dir.listFiles()?.filter { it.extension.lowercase() in listOf("ttf", "otf") }?.forEach { add(it.absolutePath) }
+    } }
+    var selectedFontPath by remember { mutableStateOf<String?>(null) }
+    var fontMessage by remember { mutableStateOf("TTF / OTF supported") }
+    val fontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runCatching {
+            val dir = File(context.filesDir, "custom_fonts").apply { mkdirs() }
+            val name = context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: "CustomFont.ttf"
+            require(name.substringAfterLast('.', "").lowercase() in listOf("ttf", "otf")) { "Only .TTF and .OTF files are supported" }
+            val target = File(dir, "${System.currentTimeMillis()}_${name.replace(Regex("[^A-Za-z0-9._-]"), "_")}")
+            context.contentResolver.openInputStream(uri).use { input -> requireNotNull(input).use { source -> target.outputStream().use { source.copyTo(it) } } }
+            Typeface.createFromFile(target)
+            customFonts.add(target.absolutePath); selectedFontPath = target.absolutePath; fontMessage = "Imported: $name"
+        }.onFailure { fontMessage = it.message ?: "Import failed" }
+    }
     val layers = remember { mutableStateListOf("TERI YAADON MEIN", "SAJI STUDIO") }
     var selectedLayer by remember { mutableIntStateOf(0) }
     val lyric = layers.getOrElse(selectedLayer) { "" }
@@ -143,6 +163,7 @@ private fun EditorScreen() {
                         glow = glow,
                         bold = bold,
                         italic = italic,
+                        fontPath = selectedFontPath,
                         rotationX = rotateX,
                         rotationY = rotateY,
                         translationX = positionX,
@@ -203,6 +224,23 @@ private fun EditorScreen() {
                                 layers.removeAt(selectedLayer)
                                 selectedLayer = (selectedLayer - 1).coerceAtLeast(0)
                             }) { Text("DELETE LAYER", color = Color(0xFFFF7A8A)) }
+                        }
+                        Text("CUSTOM FONTS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { fontPicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream")) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) { Text("+ IMPORT FONT") }
+                            Text(fontMessage, color = Color.LightGray, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(color = if (selectedFontPath == null) Color(0xFF452044) else Color(0xFF25283A), shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = null }) {
+                                Text("DEFAULT", color = if (selectedFontPath == null) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
+                            }
+                            customFonts.forEach { path ->
+                                val label = File(path).name.substringAfter('_').substringBeforeLast('.')
+                                Surface(color = if (selectedFontPath == path) Color(0xFF452044) else Color(0xFF25283A), shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = path }) {
+                                    Text(label, color = if (selectedFontPath == path) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
+                                }
+                            }
                         }
                     }
                 }
@@ -267,6 +305,30 @@ private fun EditorScreen() {
 }
 
 @Composable
+@Composable
+private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val typeface = remember(fontPath, bold, italic) {
+        val style = when { bold && italic -> Typeface.BOLD_ITALIC; bold -> Typeface.BOLD; italic -> Typeface.ITALIC; else -> Typeface.NORMAL }
+        runCatching { Typeface.create(fontPath?.let { Typeface.createFromFile(it) } ?: Typeface.DEFAULT, style) }.getOrElse { Typeface.create(Typeface.DEFAULT, style) }
+    }
+    Canvas(modifier.graphicsLayer {
+        this.rotationX = rotationX; this.rotationY = rotationY
+        translationX = translationX; translationY = translationY
+        cameraDistance = 18f * density.density
+    }) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE; textSize = sizeSp * density.density
+            textAlign = Paint.Align.CENTER; this.typeface = typeface
+            setShadowLayer(glow.coerceAtLeast(0.1f), 0f, 0f, android.graphics.Color.rgb(255, 61, 206))
+        }
+        val lines = text.split("\\n")
+        val lineHeight = paint.textSize * 1.18f
+        val startY = size.height / 2f - (lines.size - 1) * lineHeight / 2f
+        lines.forEachIndexed { index, line -> drawContext.canvas.nativeCanvas.drawText(line, size.width / 2f, startY + index * lineHeight, paint) }
+    }
+}
+
 private fun SliderControl(label: String, value: Float, min: Float, max: Float, suffix: String, onValue: (Float) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
