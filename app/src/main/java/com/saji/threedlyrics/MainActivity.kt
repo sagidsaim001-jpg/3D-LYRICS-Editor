@@ -403,14 +403,12 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
     val motion by transition.animateFloat(initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(animation = tween((1800f / animationSpeed.coerceIn(0.2f, 4f)).toInt(), easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse), label = "motion")
-    val transition = rememberInfiniteTransition(label = "lyricAnimation")
-    val motion by transition.animateFloat(initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(animation = tween(1800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = "motion")
-    val animAlpha = if (animationStyle == "FADE") 0.15f + motion * 0.85f else textAlpha
+    val animAlpha = textAlpha * (if (animationStyle == "FADE") 0.15f + motion * 0.85f else 1f)
     val animScale = when (animationStyle) {
         "ZOOM" -> 0.65f + motion * 0.5f
         "BOUNCE" -> 0.9f + motion * 0.2f
         "PULSE" -> 0.9f + motion * 0.22f
+        "SLIDE" -> 0.95f + motion * 0.05f
         else -> 1f
     }
     val animY = when (animationStyle) {
@@ -431,9 +429,10 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
         runCatching { Typeface.create(fontPath?.let { Typeface.createFromFile(it) } ?: Typeface.DEFAULT, style) }.getOrElse { Typeface.create(Typeface.DEFAULT, style) }
     }
     Canvas(modifier.graphicsLayer {
-        this.rotationX = rotationX; this.rotationY = rotationY; this.rotationZ = rotationZ
+        this.rotationX = rotationX; this.rotationY = rotationY; this.rotationZ = animatedRotation
         this.translationX = translationX + animX; this.translationY = translationY + animY
-        this.alpha = animAlpha; this.scaleX = animScale; this.scaleY = animScale
+        this.translationZ = positionZ
+        this.alpha = animAlpha; this.scaleX = scaleXValue * animScale; this.scaleY = scaleYValue * animScale
         cameraDistance = (8f + perspectiveDepth) * density.density
     }) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -441,10 +440,51 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
             textAlign = Paint.Align.CENTER; this.typeface = typeface
             setShadowLayer(glow.coerceAtLeast(0.1f), 0f, 0f, android.graphics.Color.rgb(255, 61, 206))
         }
-        val lines = text.split("\\n")
-        val lineHeight = paint.textSize * 1.18f
+        val displayText = if (animationStyle == "TYPEWRITER") {
+            text.take((text.length * motion).toInt().coerceIn(0, text.length))
+        } else text
+        val lines = displayText.split("\n")
+        val lineHeight = paint.textSize * lineSpacing
         val startY = size.height / 2f - (lines.size - 1) * lineHeight / 2f
-        lines.forEachIndexed { index, line -> drawContext.canvas.nativeCanvas.drawText(line, size.width / 2f, startY + index * lineHeight, paint) }
+        val maxWidth = lines.maxOfOrNull { paint.measureText(it) } ?: 0f
+        val x = when (textAlignMode) {
+            "LEFT" -> size.width * 0.08f
+            "RIGHT" -> size.width * 0.92f
+            else -> size.width / 2f
+        }
+        paint.textAlign = when (textAlignMode) {
+            "LEFT" -> Paint.Align.LEFT
+            "RIGHT" -> Paint.Align.RIGHT
+            else -> Paint.Align.CENTER
+        }
+        paint.letterSpacing = letterSpacing / 100f
+        paint.alpha = (animAlpha.coerceIn(0f, 1f) * 255f).toInt()
+        if (backgroundEnabled && maxWidth > 0f) {
+            val left = when (textAlignMode) {
+                "LEFT" -> x - 14f
+                "RIGHT" -> x - maxWidth - 14f
+                else -> x - maxWidth / 2f - 14f
+            }
+            val rect = android.graphics.RectF(left, startY - paint.textSize,
+                left + maxWidth + 28f, startY + (lines.size - 1) * lineHeight + paint.textSize * 0.45f)
+            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.argb(190, 12, 12, 20)
+            }
+            drawContext.canvas.nativeCanvas.drawRoundRect(rect, 18f, 18f, bgPaint)
+        }
+        lines.forEachIndexed { index, line ->
+            val y = startY + index * lineHeight
+            if (outlineWidth > 0f) {
+                val outline = Paint(paint).apply {
+                    style = Paint.Style.STROKE
+                    strokeJoin = Paint.Join.ROUND
+                    strokeWidth = outlineWidth
+                    color = android.graphics.Color.BLACK
+                }
+                drawContext.canvas.nativeCanvas.drawText(line, x, y, outline)
+            }
+            drawContext.canvas.nativeCanvas.drawText(line, x, y, paint)
+        }
     }
 }
 
