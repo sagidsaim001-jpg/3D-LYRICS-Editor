@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -124,6 +126,7 @@ private fun EditorScreen() {
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
                         maxLines = 2,
+                        style = androidx.compose.ui.text.TextStyle(shadow = if (glow > 0f) Shadow(color = Pink.copy(alpha = 0.9f), offset = Offset.Zero, blurRadius = glow) else null),
                         modifier = Modifier.align(Alignment.Center)
                             .graphicsLayer {
                                 rotationX = rotateX
