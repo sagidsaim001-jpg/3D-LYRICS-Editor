@@ -305,7 +305,6 @@ private fun EditorScreen() {
 }
 
 @Composable
-@Composable
 private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val typeface = remember(fontPath, bold, italic) {
@@ -329,6 +328,7 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
     }
 }
 
+@Composable
 private fun SliderControl(label: String, value: Float, min: Float, max: Float, suffix: String, onValue: (Float) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
