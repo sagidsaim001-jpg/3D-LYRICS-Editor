@@ -271,6 +271,7 @@ private fun EditorScreen() {
                                 Text("3D PERSPECTIVE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 SliderControl("Rotate X", rotateX, -3600f, 3600f, "°") { rotateX = it }
                                 SliderControl("Rotate Y", rotateY, -3600f, 3600f, "°") { rotateY = it }
+                                SliderControl("Rotate Z", rotateZ, -3600f, 3600f, "°") { rotateZ = it }
                                 SliderControl("Depth", depth, 0f, 10000f, "") { depth = it }
                                 TextButton(onClick = { rotateX = 18f; rotateY = -12f; rotateZ = 0f; depth = 8f },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET 3D", color = Pink, fontSize = 10.sp) }
