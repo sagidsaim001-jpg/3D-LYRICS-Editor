@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -68,6 +69,12 @@ private fun EditorScreen() {
     var positionY by remember { mutableFloatStateOf(0f) }
     var italic by remember { mutableStateOf(false) }
     var bold by remember { mutableStateOf(true) }
+    var topLeft by remember { mutableFloatStateOf(0f) }
+    var topRight by remember { mutableFloatStateOf(0f) }
+    var bottomLeft by remember { mutableFloatStateOf(0f) }
+    var bottomRight by remember { mutableFloatStateOf(0f) }
+    var playhead by remember { mutableFloatStateOf(0f) }
+    val keyframes = remember { mutableStateListOf<Float>() }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -127,24 +134,18 @@ private fun EditorScreen() {
                             Text("Import a clip to start creating", color = Color.LightGray, fontSize = 12.sp)
                         }
                     }
-                    Text(
+                    PerspectiveText(
                         text = lyric.ifBlank { "YOUR LYRICS" },
-                        color = Pink,
-                        fontSize = textSize.sp,
-                        fontWeight = if (bold) FontWeight.Black else FontWeight.Normal,
-                        fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-                        letterSpacing = 1.sp,
-                        maxLines = 2,
-                        style = androidx.compose.ui.text.TextStyle(shadow = if (glow > 0f) Shadow(color = Pink.copy(alpha = 0.9f), offset = Offset.Zero, blurRadius = glow) else null),
-                        modifier = Modifier.align(Alignment.Center)
-                            .graphicsLayer {
-                                rotationX = rotateX
-                                rotationY = rotateY
-                                cameraDistance = 18 * density
-                                shadowElevation = depth
-                                translationX = positionX * density
-                                translationY = positionY * density
-                            }
+                        modifier = Modifier.fillMaxSize(),
+                        sizeSp = textSize,
+                        cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
+                        glow = glow,
+                        bold = bold,
+                        italic = italic,
+                        rotationX = rotateX,
+                        rotationY = rotateY,
+                        translationX = positionX,
+                        translationY = positionY
                     )
                 }
 
@@ -218,6 +219,10 @@ private fun EditorScreen() {
                                 positionX = 0f; positionY = 0f; italic = false; bold = true
                             }) { Text("RESET", color = Pink) }
                         }
+                        SliderControl("Top-left corner", topLeft, -90f, 90f, " px") { topLeft = it }
+                        SliderControl("Top-right corner", topRight, -90f, 90f, " px") { topRight = it }
+                        SliderControl("Bottom-left corner", bottomLeft, -90f, 90f, " px") { bottomLeft = it }
+                        SliderControl("Bottom-right corner", bottomRight, -90f, 90f, " px") { bottomRight = it }
                         SliderControl("Position X", positionX, -120f, 120f, " px") { positionX = it }
                         SliderControl("Position Y", positionY, -100f, 100f, " px") { positionY = it }
                         SliderControl("Rotate X", rotateX, -70f, 70f, "°") { rotateX = it }
@@ -228,11 +233,30 @@ private fun EditorScreen() {
                     }
                 }
 
+                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text("KEYFRAME TIMELINE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        SliderControl("Playhead", playhead, 0f, 100f, "%") { playhead = it }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Button(onClick = { keyframes.add(playhead) }, colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) { Text("+ ADD KEYFRAME") }
+                            Text("${keyframes.size} keyframes", color = Color.LightGray, fontSize = 12.sp)
+                        }
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            keyframes.forEachIndexed { index, frame ->
+                                Surface(color = Color(0xFF452044), shape = RoundedCornerShape(8.dp), modifier = Modifier.clickable { playhead = frame }) {
+                                    Text("◆ ${frame.toInt()}%", color = Pink, modifier = Modifier.padding(9.dp), fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        Text("Keyframes currently save timeline markers. Automatic motion interpolation is a later upgrade.", color = Color.LightGray, fontSize = 11.sp)
+                    }
+                }
+
                 Surface(color = Color(0xFF21152A), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("BETA 02 • LAYER & TRANSFORM UPDATE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("BETA 03 • CORNER PERSPECTIVE & KEYFRAME MARKERS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Spacer(Modifier.height(5.dp))
-                        Text("Added multiple editable text layers, layer selection, delete layer, bold/italic styling and X/Y positioning. This is still an editor preview foundation: true four-corner perspective, motion tracking, keyframes and MP4 export are not implemented yet.", color = Color(0xFFD6D1E3), fontSize = 12.sp, lineHeight = 18.sp)
+                        Text("Added editable corner pinning controls, multi-layer lyrics, styling and timeline keyframe markers. Keyframe interpolation, motion tracking and MP4 export are still pending.", color = Color(0xFFD6D1E3), fontSize = 12.sp, lineHeight = 18.sp)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
