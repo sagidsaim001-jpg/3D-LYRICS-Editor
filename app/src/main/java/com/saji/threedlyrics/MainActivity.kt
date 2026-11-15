@@ -287,9 +287,9 @@ private fun EditorScreen() {
                         "MOVE" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("POSITION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Horizontal", positionX, -1000000f, 1000000f, " px") { positionX = it }
-                                SliderControl("Vertical", positionY, -1000000f, 1000000f, " px") { positionY = it }
-                                SliderControl("Z position", positionZ, -100000f, 100000f, " px") { positionZ = it }
+                                InfiniteSliderControl("Horizontal", positionX, 1200f, " px") { positionX = it }
+                                InfiniteSliderControl("Vertical", positionY, 1200f, " px") { positionY = it }
+                                InfiniteSliderControl("Z position", positionZ, 600f, " px") { positionZ = it }
                                 TextButton(onClick = { positionX = 0f; positionY = 0f },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET POSITION", color = Pink, fontSize = 10.sp) }
                             }
@@ -297,9 +297,9 @@ private fun EditorScreen() {
                         "3D" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("3D PERSPECTIVE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Rotate X", rotateX, -3600f, 3600f, "°") { rotateX = it }
-                                SliderControl("Rotate Y", rotateY, -3600f, 3600f, "°") { rotateY = it }
-                                SliderControl("Rotate Z", rotateZ, -3600f, 3600f, "°") { rotateZ = it }
+                                InfiniteSliderControl("Rotate X", rotateX, 360f, "°") { rotateX = it }
+                                InfiniteSliderControl("Rotate Y", rotateY, 360f, "°") { rotateY = it }
+                                InfiniteSliderControl("Rotate Z", rotateZ, 360f, "°") { rotateZ = it }
                                 SliderControl("Depth / Camera", depth, 0f, 10000f, "") { depth = it }
                                 SliderControl("Scale X", scaleXValue, 0.05f, 8f, "x") { scaleXValue = it }
                                 SliderControl("Scale Y", scaleYValue, 0.05f, 8f, "x") { scaleYValue = it }
@@ -384,7 +384,7 @@ private fun EditorScreen() {
                                         }
                                     }
                                 }
-                                Text("Markers only. Animated keyframe interpolation is not implemented yet.", color = Color.LightGray, fontSize = 9.sp)
+                                Text("Tap any saved marker to restore its text position, 3D transform, size, color and animation settings.", color = Color.LightGray, fontSize = 9.sp)
                             }
                         }
                     }
@@ -431,9 +431,8 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
     Canvas(modifier.graphicsLayer {
         this.rotationX = rotationX; this.rotationY = rotationY; this.rotationZ = animatedRotation
         this.translationX = translationX + animX; this.translationY = translationY + animY
-        this.translationZ = positionZ
         this.alpha = animAlpha; this.scaleX = scaleXValue * animScale; this.scaleY = scaleYValue * animScale
-        cameraDistance = (8f + perspectiveDepth) * density.density
+        cameraDistance = (8f + perspectiveDepth + positionZ).coerceIn(1f, 100000f) * density.density
     }) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor; textSize = sizeSp * density.density
@@ -485,6 +484,28 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
             }
             drawContext.canvas.nativeCanvas.drawText(line, x, y, paint)
         }
+    }
+}
+
+
+@Composable
+private fun InfiniteSliderControl(label: String, value: Float, amountPerSweep: Float, suffix: String, onValue: (Float) -> Unit) {
+    var sliderPosition by remember(label) { mutableFloatStateOf(0.5f) }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Text(label, color = Color(0xFFD7D5E0), fontSize = 13.sp)
+            Text(value.toInt().toString() + suffix, color = Pink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+        Slider(
+            value = sliderPosition,
+            onValueChange = { next ->
+                val delta = next - sliderPosition
+                onValue(value + delta * amountPerSweep)
+                sliderPosition = if (next <= 0.02f || next >= 0.98f) 0.5f else next
+            },
+            valueRange = 0f..1f,
+            colors = SliderDefaults.colors(thumbColor = Pink, activeTrackColor = Pink, inactiveTrackColor = Color(0xFF3B3A4C))
+        )
     }
 }
 
