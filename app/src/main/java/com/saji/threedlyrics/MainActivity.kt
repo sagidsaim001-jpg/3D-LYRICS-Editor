@@ -47,6 +47,11 @@ private val Night = Color(0xFF090A12)
 private val Panel = Color(0xFF151725)
 private val Pink = Color(0xFFFF3DCE)
 private val Violet = Color(0xFF8B5CFF)
+private data class EditorKeyframe(
+ val time: Float, val positionX: Float, val positionY: Float, val positionZ: Float,
+ val rotateX: Float, val rotateY: Float, val rotateZ: Float, val scaleX: Float, val scaleY: Float,
+ val textSize: Float, val textColor: Int, val textAlpha: Float, val glow: Float, val outlineWidth: Float, val animationStyle: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +95,16 @@ private fun EditorScreen() {
     var glow by remember { mutableFloatStateOf(18f) }
     var positionX by remember { mutableFloatStateOf(0f) }
     var positionY by remember { mutableFloatStateOf(0f) }
+    var positionZ by remember { mutableFloatStateOf(0f) }
+    var scaleXValue by remember { mutableFloatStateOf(1f) }
+    var scaleYValue by remember { mutableFloatStateOf(1f) }
+    var textAlpha by remember { mutableFloatStateOf(1f) }
+    var letterSpacing by remember { mutableFloatStateOf(0f) }
+    var lineSpacing by remember { mutableFloatStateOf(1.18f) }
+    var outlineWidth by remember { mutableFloatStateOf(0f) }
+    var backgroundEnabled by remember { mutableStateOf(false) }
+    var textAlignMode by remember { mutableStateOf("CENTER") }
+    var animationSpeed by remember { mutableFloatStateOf(1f) }
     var italic by remember { mutableStateOf(false) }
     var bold by remember { mutableStateOf(true) }
     var textColor by remember { mutableStateOf(0xFFFFFFFF.toInt()) }
@@ -99,7 +114,7 @@ private fun EditorScreen() {
     var bottomLeft by remember { mutableFloatStateOf(0f) }
     var bottomRight by remember { mutableFloatStateOf(0f) }
     var playhead by remember { mutableFloatStateOf(0f) }
-    val keyframes = remember { mutableStateListOf<Float>() }
+    val keyframes = remember { mutableStateListOf<EditorKeyframe>() }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -158,6 +173,9 @@ private fun EditorScreen() {
                     PerspectiveText(text = lyric.ifBlank { "YOUR LYRICS" }, modifier = Modifier.fillMaxSize(),
                         sizeSp = textSize, cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
                         glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath, perspectiveDepth = depth, textColor = textColor, rotationZ = rotateZ, animationStyle = animationStyle,
+                         positionZ = positionZ, scaleXValue = scaleXValue, scaleYValue = scaleYValue, textAlpha = textAlpha,
+                         letterSpacing = letterSpacing, lineSpacing = lineSpacing, outlineWidth = outlineWidth,
+                         backgroundEnabled = backgroundEnabled, textAlignMode = textAlignMode, animationSpeed = animationSpeed,
                         rotationX = rotateX, rotationY = rotateY, translationX = positionX, translationY = positionY)
                 }
                 Surface(color = Panel, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -254,14 +272,24 @@ private fun EditorScreen() {
                                     FilterChip(selected = bold, onClick = { bold = !bold }, label = { Text("Bold", fontSize = 11.sp) })
                                     FilterChip(selected = italic, onClick = { italic = !italic }, label = { Text("Italic", fontSize = 11.sp) })
                                 }
-                                SliderControl("Text size", textSize, 16f, 58f, " sp") { textSize = it }
+                                SliderControl("Text size", textSize, 8f, 180f, " sp") { textSize = it }
+                                SliderControl("Text opacity", textAlpha, 0f, 1f, "") { textAlpha = it }
+                                SliderControl("Letter spacing", letterSpacing, -5f, 30f, "") { letterSpacing = it }
+                                SliderControl("Line spacing", lineSpacing, 0.7f, 2.5f, "x") { lineSpacing = it }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf("LEFT", "CENTER", "RIGHT").forEach { align ->
+                                        FilterChip(selected = textAlignMode == align, onClick = { textAlignMode = align }, label = { Text(align, fontSize = 10.sp) })
+                                    }
+                                }
+                                FilterChip(selected = backgroundEnabled, onClick = { backgroundEnabled = !backgroundEnabled }, label = { Text("Text background box") })
                             }
                         }
                         "MOVE" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("POSITION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Horizontal", positionX, -100000f, 100000f, " px") { positionX = it }
-                                SliderControl("Vertical", positionY, -100000f, 100000f, " px") { positionY = it }
+                                SliderControl("Horizontal", positionX, -1000000f, 1000000f, " px") { positionX = it }
+                                SliderControl("Vertical", positionY, -1000000f, 1000000f, " px") { positionY = it }
+                                SliderControl("Z position", positionZ, -100000f, 100000f, " px") { positionZ = it }
                                 TextButton(onClick = { positionX = 0f; positionY = 0f },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET POSITION", color = Pink, fontSize = 10.sp) }
                             }
@@ -272,15 +300,23 @@ private fun EditorScreen() {
                                 SliderControl("Rotate X", rotateX, -3600f, 3600f, "°") { rotateX = it }
                                 SliderControl("Rotate Y", rotateY, -3600f, 3600f, "°") { rotateY = it }
                                 SliderControl("Rotate Z", rotateZ, -3600f, 3600f, "°") { rotateZ = it }
-                                SliderControl("Depth", depth, 0f, 10000f, "") { depth = it }
-                                TextButton(onClick = { rotateX = 18f; rotateY = -12f; rotateZ = 0f; depth = 8f },
+                                SliderControl("Depth / Camera", depth, 0f, 10000f, "") { depth = it }
+                                SliderControl("Scale X", scaleXValue, 0.05f, 8f, "x") { scaleXValue = it }
+                                SliderControl("Scale Y", scaleYValue, 0.05f, 8f, "x") { scaleYValue = it }
+                                TextButton(onClick = {
+                                    rotateX = 18f; rotateY = -12f; rotateZ = 0f; depth = 8f
+                                    positionX = 0f; positionY = 0f; positionZ = 0f
+                                    scaleXValue = 1f; scaleYValue = 1f
+                                },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET 3D", color = Pink, fontSize = 10.sp) }
                             }
                         }
                         "GLOW" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("NEON GLOW", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Glow intensity", glow, 0f, 40f, "") { glow = it }
+                                SliderControl("Glow intensity", glow, 0f, 80f, "") { glow = it }
+                                SliderControl("Outline width", outlineWidth, 0f, 20f, " px") { outlineWidth = it }
+                                Text("Outline color follows the selected text color", color = Color.LightGray, fontSize = 9.sp)
                             }
                         }
                         "COLOR" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
@@ -293,12 +329,18 @@ private fun EditorScreen() {
                                             modifier = Modifier.size(34.dp).border(if (textColor == colorValue) 3.dp else 1.dp, if (textColor == colorValue) Pink else Color.Gray, RoundedCornerShape(50)).clickable { textColor = colorValue }) {}
                                     }
                                 }
+                                val red = (textColor shr 16) and 0xFF
+                                val green = (textColor shr 8) and 0xFF
+                                val blue = textColor and 0xFF
+                                SliderControl("Red", red.toFloat(), 0f, 255f, "") { textColor = android.graphics.Color.rgb(it.toInt(), green, blue) }
+                                SliderControl("Green", green.toFloat(), 0f, 255f, "") { textColor = android.graphics.Color.rgb(red, it.toInt(), blue) }
+                                SliderControl("Blue", blue.toFloat(), 0f, 255f, "") { textColor = android.graphics.Color.rgb(red, green, it.toInt()) }
                             }
                         }
                         "ANIM" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("TEXT ANIMATION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                listOf("NONE", "FADE", "ZOOM", "BOUNCE", "FLOAT", "SHAKE").chunked(3).forEach { presets ->
+                                listOf("NONE", "FADE", "ZOOM", "BOUNCE", "FLOAT", "SHAKE", "PULSE", "ROTATE", "SLIDE", "TYPEWRITER").chunked(3).forEach { presets ->
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         presets.forEach { preset ->
                                             FilterChip(selected = animationStyle == preset, onClick = { animationStyle = preset },
@@ -306,7 +348,8 @@ private fun EditorScreen() {
                                         }
                                     }
                                 }
-                                Text("Animation preview is live. Video export animation is a separate next step.", color = Color.LightGray, fontSize = 9.sp)
+                                SliderControl("Animation speed", animationSpeed, 0.2f, 4f, "x") { animationSpeed = it }
+                                Text("Live preview presets: fade, zoom, bounce, float, shake, pulse, rotate, slide and typewriter.", color = Color.LightGray, fontSize = 9.sp)
                             }
                         }
                         "KEYFRAMES" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
@@ -314,18 +357,30 @@ private fun EditorScreen() {
                                 Text("KEYFRAME MARKERS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 SliderControl("Playhead", playhead, 0f, 100f, "%") { playhead = it }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Button(onClick = { keyframes.add(playhead) },
+                                    Button(onClick = {
+                                        keyframes.removeAll { kotlin.math.abs(it.time - playhead) < 0.5f }
+                                        keyframes.add(EditorKeyframe(playhead, positionX, positionY, positionZ, rotateX, rotateY, rotateZ,
+                                            scaleXValue, scaleYValue, textSize, textColor, textAlpha, glow, outlineWidth, animationStyle))
+                                        keyframes.sortBy { it.time }
+                                    },
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) {
-                                        Text("+ ADD KEYFRAME", fontSize = 10.sp)
+                                        Text("+ SAVE SNAPSHOT", fontSize = 10.sp)
                                     }
                                     Text(keyframes.size.toString() + " markers", color = Color.LightGray, fontSize = 10.sp)
                                 }
                                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     keyframes.forEach { frame ->
                                         Surface(color = Color(0xFF452044), shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier.clickable { playhead = frame }) {
-                                            Text("◆ " + frame.toInt() + "%", color = Pink, modifier = Modifier.padding(8.dp), fontSize = 10.sp)
+                                            modifier = Modifier.clickable {
+                                                playhead = frame.time
+                                                positionX = frame.positionX; positionY = frame.positionY; positionZ = frame.positionZ
+                                                rotateX = frame.rotateX; rotateY = frame.rotateY; rotateZ = frame.rotateZ
+                                                scaleXValue = frame.scaleX; scaleYValue = frame.scaleY
+                                                textSize = frame.textSize; textColor = frame.textColor; textAlpha = frame.textAlpha
+                                                glow = frame.glow; outlineWidth = frame.outlineWidth; animationStyle = frame.animationStyle
+                                            }) {
+                                            Text("◆ " + frame.time.toInt() + "%", color = Pink, modifier = Modifier.padding(8.dp), fontSize = 10.sp)
                                         }
                                     }
                                 }
@@ -341,14 +396,35 @@ private fun EditorScreen() {
 }
 
 @Composable
-private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?, perspectiveDepth: Float, textColor: Int, rotationZ: Float, animationStyle: String) {
+private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?, perspectiveDepth: Float, textColor: Int, rotationZ: Float, animationStyle: String,
+    positionZ: Float, scaleXValue: Float, scaleYValue: Float, textAlpha: Float, letterSpacing: Float,
+    lineSpacing: Float, outlineWidth: Float, backgroundEnabled: Boolean, textAlignMode: String, animationSpeed: Float) {
+    val transition = rememberInfiniteTransition(label = "lyricAnimation")
+    val motion by transition.animateFloat(initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween((1800f / animationSpeed.coerceIn(0.2f, 4f)).toInt(), easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse), label = "motion")
     val transition = rememberInfiniteTransition(label = "lyricAnimation")
     val motion by transition.animateFloat(initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(animation = tween(1800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = "motion")
-    val animAlpha = if (animationStyle == "FADE") 0.25f + motion * 0.75f else 1f
-    val animScale = when (animationStyle) { "ZOOM" -> 0.75f + motion * 0.35f; "BOUNCE" -> 0.9f + motion * 0.2f; else -> 1f }
-    val animY = when (animationStyle) { "FLOAT" -> (motion - 0.5f) * 70f; "BOUNCE" -> -kotlin.math.abs(motion - 0.5f) * 55f; else -> 0f }
-    val animX = if (animationStyle == "SHAKE") kotlin.math.sin(motion * 35f) * 12f else 0f
+    val animAlpha = if (animationStyle == "FADE") 0.15f + motion * 0.85f else textAlpha
+    val animScale = when (animationStyle) {
+        "ZOOM" -> 0.65f + motion * 0.5f
+        "BOUNCE" -> 0.9f + motion * 0.2f
+        "PULSE" -> 0.9f + motion * 0.22f
+        else -> 1f
+    }
+    val animY = when (animationStyle) {
+        "FLOAT" -> (motion - 0.5f) * 70f
+        "BOUNCE" -> -kotlin.math.abs(motion - 0.5f) * 55f
+        "SLIDE" -> (0.5f - motion) * 220f
+        else -> 0f
+    }
+    val animX = when (animationStyle) {
+        "SHAKE" -> kotlin.math.sin(motion * 35f) * 12f
+        "SLIDE" -> (motion - 0.5f) * 220f
+        else -> 0f
+    }
+    val animatedRotation = rotationZ + if (animationStyle == "ROTATE") motion * 360f else 0f
     val density = androidx.compose.ui.platform.LocalDensity.current
     val typeface = remember(fontPath, bold, italic) {
         val style = when { bold && italic -> Typeface.BOLD_ITALIC; bold -> Typeface.BOLD; italic -> Typeface.ITALIC; else -> Typeface.NORMAL }
