@@ -153,7 +153,7 @@ private fun EditorScreen() {
                     }
                     PerspectiveText(text = lyric.ifBlank { "YOUR LYRICS" }, modifier = Modifier.fillMaxSize(),
                         sizeSp = textSize, cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
-                        glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath,
+                        glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath, perspectiveDepth = depth,
                         rotationX = rotateX, rotationY = rotateY, translationX = positionX, translationY = positionY)
                 }
                 Surface(color = Panel, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -167,160 +167,142 @@ private fun EditorScreen() {
                     }
                 }
                 Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth().background(Color(0xFF171927), RoundedCornerShape(13.dp)).padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf("TEXT", "FONT", "3D", "KEYFRAMES").forEach { tool ->
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                        .background(Color(0xFF171927), RoundedCornerShape(13.dp))
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    listOf("TEXT" to "T", "FONT" to "Aa", "STYLE" to "✦", "MOVE" to "↔", "3D" to "◇", "GLOW" to "☼", "KEYFRAMES" to "◆").forEach { (tool, symbol) ->
                         val active = activeTool == tool
                         Surface(color = if (active) Color(0xFF452044) else Color.Transparent,
-                            shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f).clickable { activeTool = tool }) {
-                            Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(when(tool) { "TEXT" -> "T"; "FONT" -> "Aa"; "3D" -> "◇"; else -> "◆" },
-                                    color = if (active) Pink else Color.LightGray, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Text(tool, color = if (active) Pink else Color.LightGray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            shape = RoundedCornerShape(9.dp), modifier = Modifier.width(65.dp).clickable { activeTool = tool }) {
+                            Column(Modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(symbol, color = if (active) Pink else Color.LightGray, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                Text(tool, color = if (active) Pink else Color.LightGray, fontSize = 8.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             }
                         }
                     }
                 }
-                Column(Modifier.fillMaxWidth().weight(0.92f).padding(top = 6.dp).verticalScroll(rememberScrollState())) {
-                    when(activeTool) {
-                        "TEXT" -> {
-                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.TextFields, null, tint = Pink)
-                                Spacer(Modifier.width(8.dp))
-                                Text("TEXT LAYERS", fontWeight = FontWeight.Bold)
-                            }
-                            TextButton(onClick = {
-                                layers.add("NEW LYRIC")
-                                selectedLayer = layers.lastIndex
-                            }) { Text("+ ADD LAYER", color = Pink) }
-                        }
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            layers.forEachIndexed { index, item ->
-                                Surface(
-                                    color = if (selectedLayer == index) Color(0xFF452044) else Color(0xFF25283A),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.clickable { selectedLayer = index }
-                                ) {
-                                    Text("LAYER ${index + 1}", color = if (selectedLayer == index) Pink else Color.LightGray,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Column(Modifier.fillMaxWidth().weight(0.92f).padding(top = 5.dp).verticalScroll(rememberScrollState())) {
+                    when (activeTool) {
+                        "TEXT" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("TEXT LAYERS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    TextButton(onClick = { layers.add("NEW LYRIC"); selectedLayer = layers.lastIndex },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("+ ADD", color = Pink, fontSize = 11.sp) }
+                                }
+                                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    layers.forEachIndexed { index, _ ->
+                                        Surface(color = if (selectedLayer == index) Color(0xFF452044) else Color(0xFF25283A),
+                                            shape = RoundedCornerShape(9.dp), modifier = Modifier.clickable { selectedLayer = index }) {
+                                            Text("LAYER " + (index + 1), color = if (selectedLayer == index) Pink else Color.LightGray,
+                                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                                OutlinedTextField(value = lyric, onValueChange = { if (layers.isNotEmpty()) layers[selectedLayer] = it },
+                                    modifier = Modifier.fillMaxWidth(), label = { Text("Selected lyric text") }, minLines = 1, maxLines = 3,
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Pink, focusedLabelColor = Pink,
+                                        unfocusedBorderColor = Color(0xFF414357)))
+                                TextButton(enabled = layers.size > 1, onClick = {
+                                    layers.removeAt(selectedLayer); selectedLayer = (selectedLayer - 1).coerceAtLeast(0)
+                                }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) {
+                                    Text("DELETE SELECTED LAYER", color = Color(0xFFFF7A8A), fontSize = 10.sp)
                                 }
                             }
                         }
-                        OutlinedTextField(
-                            value = lyric, onValueChange = { layers[selectedLayer] = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Edit selected layer") },
-                            minLines = 1, maxLines = 3,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Pink, focusedLabelColor = Pink,
-                                unfocusedBorderColor = Color(0xFF414357)
-                            )
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            FilterChip(selected = bold, onClick = { bold = !bold }, label = { Text("Bold") })
-                            FilterChip(selected = italic, onClick = { italic = !italic }, label = { Text("Italic") })
-                            TextButton(enabled = layers.size > 1, onClick = {
-                                layers.removeAt(selectedLayer)
-                                selectedLayer = (selectedLayer - 1).coerceAtLeast(0)
-                            }) { Text("DELETE LAYER", color = Color(0xFFFF7A8A)) }
-                        }
-                        Text("CUSTOM FONTS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { fontPicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream")) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) { Text("+ IMPORT FONT") }
-                            Text(fontMessage, color = Color.LightGray, fontSize = 10.sp, modifier = Modifier.weight(1f))
-                        }
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Surface(color = if (selectedFontPath == null) Color(0xFF452044) else Color(0xFF25283A), shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = null }) {
-                                Text("DEFAULT", color = if (selectedFontPath == null) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
-                            }
-                            customFonts.forEach { path ->
-                                val label = File(path).name.substringAfter('_').substringBeforeLast('.')
-                                Surface(color = if (selectedFontPath == path) Color(0xFF452044) else Color(0xFF25283A), shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = path }) {
-                                    Text(label, color = if (selectedFontPath == path) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-                        }
-                        "FONT" -> {
-                            Surface(color = Panel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Text("CUSTOM FONT LIBRARY", color = Pink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        "FONT" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("FONT LIBRARY", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { fontPicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream")) },
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) {
-                                        Text("+ IMPORT TTF / OTF FONT")
+                                        Text("+ IMPORT TTF / OTF", fontSize = 10.sp)
                                     }
-                                    Text(fontMessage, color = Color.LightGray, fontSize = 11.sp)
-                                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Surface(color = if (selectedFontPath == null) Color(0xFF452044) else Color(0xFF25283A),
-                                            shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = null }) {
-                                            Text("DEFAULT", color = if (selectedFontPath == null) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
-                                        }
-                                        customFonts.forEach { path ->
-                                            val label = File(path).name.substringAfter('_').substringBeforeLast('.')
-                                            Surface(color = if (selectedFontPath == path) Color(0xFF452044) else Color(0xFF25283A),
-                                                shape = RoundedCornerShape(10.dp), modifier = Modifier.clickable { selectedFontPath = path }) {
-                                                Text(label, color = if (selectedFontPath == path) Pink else Color.LightGray, modifier = Modifier.padding(12.dp), fontSize = 11.sp)
-                                            }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(fontMessage, color = Color.LightGray, fontSize = 9.sp, modifier = Modifier.weight(1f))
+                                }
+                                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    Surface(color = if (selectedFontPath == null) Color(0xFF452044) else Color(0xFF25283A),
+                                        shape = RoundedCornerShape(9.dp), modifier = Modifier.clickable { selectedFontPath = null }) {
+                                        Text("DEFAULT", color = if (selectedFontPath == null) Pink else Color.LightGray,
+                                            modifier = Modifier.padding(10.dp), fontSize = 10.sp)
+                                    }
+                                    customFonts.forEach { path ->
+                                        val label = File(path).name.substringAfter('_').substringBeforeLast('.')
+                                        Surface(color = if (selectedFontPath == path) Color(0xFF452044) else Color(0xFF25283A),
+                                            shape = RoundedCornerShape(9.dp), modifier = Modifier.clickable { selectedFontPath = path }) {
+                                            Text(label, color = if (selectedFontPath == path) Pink else Color.LightGray,
+                                                modifier = Modifier.padding(10.dp), fontSize = 10.sp)
                                         }
                                     }
                                 }
                             }
                         }
-                        "3D" -> {
-                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Tune, null, tint = Pink)
-                                Spacer(Modifier.width(8.dp))
-                                Text("3D TRANSFORM & STYLE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-                            TextButton(onClick = {
-                                rotateX = 18f; rotateY = -12f; depth = 8f; textSize = 34f; glow = 18f
-                                positionX = 0f; positionY = 0f; italic = false; bold = true
-                            }) { Text("RESET", color = Pink) }
-                        }
-                        SliderControl("Top-left corner", topLeft, -90f, 90f, " px") { topLeft = it }
-                        SliderControl("Top-right corner", topRight, -90f, 90f, " px") { topRight = it }
-                        SliderControl("Bottom-left corner", bottomLeft, -90f, 90f, " px") { bottomLeft = it }
-                        SliderControl("Bottom-right corner", bottomRight, -90f, 90f, " px") { bottomRight = it }
-                        SliderControl("Position X", positionX, -120f, 120f, " px") { positionX = it }
-                        SliderControl("Position Y", positionY, -100f, 100f, " px") { positionY = it }
-                        SliderControl("Rotate X", rotateX, -70f, 70f, "°") { rotateX = it }
-                        SliderControl("Rotate Y", rotateY, -70f, 70f, "°") { rotateY = it }
-                        SliderControl("3D Depth / Shadow", depth, 0f, 30f, "") { depth = it }
-                        SliderControl("Text Size", textSize, 16f, 58f, "sp") { textSize = it }
-                        SliderControl("Neon Glow", glow, 0f, 40f, "") { glow = it }
-                    }
-                }
-                        }
-                        "KEYFRAMES" -> {
-                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text("KEYFRAME TIMELINE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        SliderControl("Playhead", playhead, 0f, 100f, "%") { playhead = it }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = { keyframes.add(playhead) }, colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) { Text("+ ADD KEYFRAME") }
-                            Text("${keyframes.size} keyframes", color = Color.LightGray, fontSize = 12.sp)
-                        }
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            keyframes.forEachIndexed { index, frame ->
-                                Surface(color = Color(0xFF452044), shape = RoundedCornerShape(8.dp), modifier = Modifier.clickable { playhead = frame }) {
-                                    Text("◆ ${frame.toInt()}%", color = Pink, modifier = Modifier.padding(9.dp), fontSize = 11.sp)
+                        "STYLE" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text("TEXT STYLE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(selected = bold, onClick = { bold = !bold }, label = { Text("Bold", fontSize = 11.sp) })
+                                    FilterChip(selected = italic, onClick = { italic = !italic }, label = { Text("Italic", fontSize = 11.sp) })
                                 }
+                                SliderControl("Text size", textSize, 16f, 58f, " sp") { textSize = it }
                             }
                         }
-                        Text("Keyframes currently save timeline markers. Automatic motion interpolation is a later upgrade.", color = Color.LightGray, fontSize = 11.sp)
-                    }
-                }
+                        "MOVE" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("POSITION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                SliderControl("Horizontal", positionX, -120f, 120f, " px") { positionX = it }
+                                SliderControl("Vertical", positionY, -100f, 100f, " px") { positionY = it }
+                                TextButton(onClick = { positionX = 0f; positionY = 0f },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET POSITION", color = Pink, fontSize = 10.sp) }
+                            }
+                        }
+                        "3D" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("3D PERSPECTIVE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                SliderControl("Rotate X", rotateX, -70f, 70f, "°") { rotateX = it }
+                                SliderControl("Rotate Y", rotateY, -70f, 70f, "°") { rotateY = it }
+                                SliderControl("Depth", depth, 0f, 30f, "") { depth = it }
+                                TextButton(onClick = { rotateX = 18f; rotateY = -12f; depth = 8f },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET 3D", color = Pink, fontSize = 10.sp) }
+                            }
+                        }
+                        "GLOW" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("NEON GLOW", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                SliderControl("Glow intensity", glow, 0f, 40f, "") { glow = it }
+                            }
+                        }
+                        "KEYFRAMES" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text("KEYFRAME MARKERS", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                SliderControl("Playhead", playhead, 0f, 100f, "%") { playhead = it }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Button(onClick = { keyframes.add(playhead) },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Pink, contentColor = Color.Black)) {
+                                        Text("+ ADD KEYFRAME", fontSize = 10.sp)
+                                    }
+                                    Text(keyframes.size.toString() + " markers", color = Color.LightGray, fontSize = 10.sp)
+                                }
+                                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    keyframes.forEach { frame ->
+                                        Surface(color = Color(0xFF452044), shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.clickable { playhead = frame }) {
+                                            Text("◆ " + frame.toInt() + "%", color = Pink, modifier = Modifier.padding(8.dp), fontSize = 10.sp)
+                                        }
+                                    }
+                                }
+                                Text("Markers only. Animated keyframe interpolation is not implemented yet.", color = Color.LightGray, fontSize = 9.sp)
+                            }
                         }
                     }
+                }
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -329,7 +311,7 @@ private fun EditorScreen() {
 }
 
 @Composable
-private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?) {
+private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?, perspectiveDepth: Float) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val typeface = remember(fontPath, bold, italic) {
         val style = when { bold && italic -> Typeface.BOLD_ITALIC; bold -> Typeface.BOLD; italic -> Typeface.ITALIC; else -> Typeface.NORMAL }
@@ -337,8 +319,8 @@ private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp:
     }
     Canvas(modifier.graphicsLayer {
         this.rotationX = rotationX; this.rotationY = rotationY
-        translationX = translationX; translationY = translationY
-        cameraDistance = 18f * density.density
+        this.translationX = translationX; this.translationY = translationY
+        cameraDistance = (8f + perspectiveDepth) * density.density
     }) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE; textSize = sizeSp * density.density
