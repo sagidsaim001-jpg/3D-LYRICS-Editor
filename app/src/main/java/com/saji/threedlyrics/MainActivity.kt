@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Movie
@@ -83,6 +84,7 @@ private fun EditorScreen() {
     val lyric = layers.getOrElse(selectedLayer) { "" }
     var rotateX by remember { mutableFloatStateOf(18f) }
     var rotateY by remember { mutableFloatStateOf(-12f) }
+    var rotateZ by remember { mutableFloatStateOf(0f) }
     var depth by remember { mutableFloatStateOf(8f) }
     var textSize by remember { mutableFloatStateOf(34f) }
     var glow by remember { mutableFloatStateOf(18f) }
@@ -90,6 +92,8 @@ private fun EditorScreen() {
     var positionY by remember { mutableFloatStateOf(0f) }
     var italic by remember { mutableStateOf(false) }
     var bold by remember { mutableStateOf(true) }
+    var textColor by remember { mutableStateOf(0xFFFFFFFF.toInt()) }
+    var animationStyle by remember { mutableStateOf("NONE") }
     var topLeft by remember { mutableFloatStateOf(0f) }
     var topRight by remember { mutableFloatStateOf(0f) }
     var bottomLeft by remember { mutableFloatStateOf(0f) }
@@ -153,7 +157,7 @@ private fun EditorScreen() {
                     }
                     PerspectiveText(text = lyric.ifBlank { "YOUR LYRICS" }, modifier = Modifier.fillMaxSize(),
                         sizeSp = textSize, cornerOffsets = listOf(topLeft, topRight, bottomRight, bottomLeft),
-                        glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath, perspectiveDepth = depth,
+                        glow = glow, bold = bold, italic = italic, fontPath = selectedFontPath, perspectiveDepth = depth, textColor = textColor, rotationZ = rotateZ, animationStyle = animationStyle,
                         rotationX = rotateX, rotationY = rotateY, translationX = positionX, translationY = positionY)
                 }
                 Surface(color = Panel, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -173,7 +177,7 @@ private fun EditorScreen() {
                         .padding(horizontal = 4.dp, vertical = 3.dp),
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    listOf("TEXT" to "T", "FONT" to "Aa", "STYLE" to "✦", "MOVE" to "↔", "3D" to "◇", "GLOW" to "☼", "KEYFRAMES" to "◆").forEach { (tool, symbol) ->
+                    listOf("TEXT" to "T", "FONT" to "Aa", "STYLE" to "✦", "MOVE" to "↔", "3D" to "◇", "GLOW" to "☼", "COLOR" to "●", "ANIM" to "✧", "KEYFRAMES" to "◆").forEach { (tool, symbol) ->
                         val active = activeTool == tool
                         Surface(color = if (active) Color(0xFF452044) else Color.Transparent,
                             shape = RoundedCornerShape(9.dp), modifier = Modifier.width(65.dp).clickable { activeTool = tool }) {
@@ -256,8 +260,8 @@ private fun EditorScreen() {
                         "MOVE" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("POSITION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Horizontal", positionX, -120f, 120f, " px") { positionX = it }
-                                SliderControl("Vertical", positionY, -100f, 100f, " px") { positionY = it }
+                                SliderControl("Horizontal", positionX, -100000f, 100000f, " px") { positionX = it }
+                                SliderControl("Vertical", positionY, -100000f, 100000f, " px") { positionY = it }
                                 TextButton(onClick = { positionX = 0f; positionY = 0f },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET POSITION", color = Pink, fontSize = 10.sp) }
                             }
@@ -265,10 +269,10 @@ private fun EditorScreen() {
                         "3D" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("3D PERSPECTIVE", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                SliderControl("Rotate X", rotateX, -70f, 70f, "°") { rotateX = it }
-                                SliderControl("Rotate Y", rotateY, -70f, 70f, "°") { rotateY = it }
-                                SliderControl("Depth", depth, 0f, 30f, "") { depth = it }
-                                TextButton(onClick = { rotateX = 18f; rotateY = -12f; depth = 8f },
+                                SliderControl("Rotate X", rotateX, -3600f, 3600f, "°") { rotateX = it }
+                                SliderControl("Rotate Y", rotateY, -3600f, 3600f, "°") { rotateY = it }
+                                SliderControl("Depth", depth, 0f, 10000f, "") { depth = it }
+                                TextButton(onClick = { rotateX = 18f; rotateY = -12f; rotateZ = 0f; depth = 8f },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("RESET 3D", color = Pink, fontSize = 10.sp) }
                             }
                         }
@@ -276,6 +280,32 @@ private fun EditorScreen() {
                             Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("NEON GLOW", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 SliderControl("Glow intensity", glow, 0f, 40f, "") { glow = it }
+                            }
+                        }
+                        "COLOR" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("TEXT COLOR", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                val palette = listOf(0xFFFFFFFF.toInt(), 0xFFFF3DCE.toInt(), 0xFF00E5FF.toInt(), 0xFFFFD740.toInt(), 0xFF7CFF6B.toInt(), 0xFFFF7043.toInt(), 0xFFB388FF.toInt(), 0xFF111111.toInt())
+                                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    palette.forEach { colorValue ->
+                                        Surface(color = Color(colorValue), shape = RoundedCornerShape(50),
+                                            modifier = Modifier.size(34.dp).border(if (textColor == colorValue) 3.dp else 1.dp, if (textColor == colorValue) Pink else Color.Gray, RoundedCornerShape(50)).clickable { textColor = colorValue }) {}
+                                    }
+                                }
+                            }
+                        }
+                        "ANIM" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("TEXT ANIMATION", color = Pink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                listOf("NONE", "FADE", "ZOOM", "BOUNCE", "FLOAT", "SHAKE").chunked(3).forEach { presets ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        presets.forEach { preset ->
+                                            FilterChip(selected = animationStyle == preset, onClick = { animationStyle = preset },
+                                                label = { Text(preset, fontSize = 10.sp) })
+                                        }
+                                    }
+                                }
+                                Text("Animation preview is live. Video export animation is a separate next step.", color = Color.LightGray, fontSize = 9.sp)
                             }
                         }
                         "KEYFRAMES" -> Surface(color = Panel, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
@@ -310,19 +340,27 @@ private fun EditorScreen() {
 }
 
 @Composable
-private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?, perspectiveDepth: Float) {
+private fun PerspectiveText(text: String, modifier: Modifier = Modifier, sizeSp: Float, cornerOffsets: List<Float>, glow: Float, bold: Boolean, italic: Boolean, rotationX: Float, rotationY: Float, translationX: Float, translationY: Float, fontPath: String?, perspectiveDepth: Float, textColor: Int, rotationZ: Float, animationStyle: String) {
+    val transition = rememberInfiniteTransition(label = "lyricAnimation")
+    val motion by transition.animateFloat(initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(1800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = "motion")
+    val animAlpha = if (animationStyle == "FADE") 0.25f + motion * 0.75f else 1f
+    val animScale = when (animationStyle) { "ZOOM" -> 0.75f + motion * 0.35f; "BOUNCE" -> 0.9f + motion * 0.2f; else -> 1f }
+    val animY = when (animationStyle) { "FLOAT" -> (motion - 0.5f) * 70f; "BOUNCE" -> -kotlin.math.abs(motion - 0.5f) * 55f; else -> 0f }
+    val animX = if (animationStyle == "SHAKE") kotlin.math.sin(motion * 35f) * 12f else 0f
     val density = androidx.compose.ui.platform.LocalDensity.current
     val typeface = remember(fontPath, bold, italic) {
         val style = when { bold && italic -> Typeface.BOLD_ITALIC; bold -> Typeface.BOLD; italic -> Typeface.ITALIC; else -> Typeface.NORMAL }
         runCatching { Typeface.create(fontPath?.let { Typeface.createFromFile(it) } ?: Typeface.DEFAULT, style) }.getOrElse { Typeface.create(Typeface.DEFAULT, style) }
     }
     Canvas(modifier.graphicsLayer {
-        this.rotationX = rotationX; this.rotationY = rotationY
-        this.translationX = translationX; this.translationY = translationY
+        this.rotationX = rotationX; this.rotationY = rotationY; this.rotationZ = rotationZ
+        this.translationX = translationX + animX; this.translationY = translationY + animY
+        this.alpha = animAlpha; this.scaleX = animScale; this.scaleY = animScale
         cameraDistance = (8f + perspectiveDepth) * density.density
     }) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE; textSize = sizeSp * density.density
+            color = textColor; textSize = sizeSp * density.density
             textAlign = Paint.Align.CENTER; this.typeface = typeface
             setShadowLayer(glow.coerceAtLeast(0.1f), 0f, 0f, android.graphics.Color.rgb(255, 61, 206))
         }
